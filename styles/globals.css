@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-family: "Inter", sans-serif; /* Example: using a common sans-serif font */
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
