@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX, Send, Mic, StopCircle, MessageCircle, X, Minimize2 } from "lucide-react"
+import { Mic, StopCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
 import { submitToPipedrive } from "@/app/actions/submitToPipedrive"
@@ -18,10 +18,7 @@ function processTextForSpeech(text) {
     .trim()
 }
 
-export default function GlazeWidget() {
-  const [isVisible, setIsVisible] = useState(false) // Controls 5-second delay
-  const [isOpen, setIsOpen] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
+export default function GlazeChatPreview() {
   const [language, setLanguage] = useState("en")
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
@@ -32,29 +29,19 @@ export default function GlazeWidget() {
   const [isListening, setIsListening] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState(null)
-  const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [hasSubmitted, setHasSubmitted] = useState(false) // prevent double-submits
 
   const audioRef = useRef(null)
   const spokenMessageIds = useRef(new Set())
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
 
-  // ✅ 5-second delay before showing widget
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-      console.log("🎯 Chat widget now visible after 5-second delay")
-    }, 5000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   // ✅ Enhanced email validation function
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   // ✅ Enhanced streaming chunk handler
   const handleStreamChunk = (data) => {
-    if (data === "[DONE]") return
+    if (data === "[DONE]") return // Fix for JSON chunk parse error
     try {
       const json = JSON.parse(data)
       const deltaContent = json.choices[0]?.delta?.content
@@ -115,31 +102,31 @@ export default function GlazeWidget() {
     }
   }, [language, input])
 
-  // Initialize chat when opened
+  // Initial setup for language
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
-      const userLang = navigator.language.split("-")[0]
-      const supportedLang = initialMessagesDict[userLang] ? userLang : "en"
-      setLanguage(supportedLang)
+    const userLang = navigator.language.split("-")[0]
+    const supportedLang = initialMessagesDict[userLang] ? userLang : "en"
+    setLanguage(supportedLang)
 
-      const generateAndSetInitialMessages = async () => {
-        try {
-          console.log("🚀 Starting initial message setup...")
-          const greetingMessage = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
-          console.log("📝 Setting greeting message:", greetingMessage.content.substring(0, 50) + "...")
-          setMessages([greetingMessage])
-          await playTTS(greetingMessage)
-          console.log("✅ Initial setup complete")
-        } catch (error) {
-          console.error("Failed to setup initial messages:", error)
-          const initialMsg = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
-          setMessages([initialMsg])
-          playTTS(initialMsg)
-        }
+    const generateAndSetInitialMessages = async () => {
+      try {
+        console.log("🚀 Starting initial message setup...")
+
+        const greetingMessage = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+        console.log("📝 Setting greeting message:", greetingMessage.content.substring(0, 50) + "...")
+        setMessages([greetingMessage])
+        await playTTS(greetingMessage)
+
+        console.log("✅ Initial setup complete - CRM will handle S.O# assignment")
+      } catch (error) {
+        console.error("Failed to setup initial messages:", error)
+        const initialMsg = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+        setMessages([initialMsg])
+        playTTS(initialMsg)
       }
-      generateAndSetInitialMessages()
     }
-  }, [isOpen])
+    generateAndSetInitialMessages()
+  }, [])
 
   const playTTS = async (message) => {
     if (!message || isMuted) return
@@ -193,7 +180,7 @@ export default function GlazeWidget() {
     setMessages(newMessages)
     setInput("")
     setIsLoading(true)
-    setError(null)
+    setError(null) // Clear any previous errors
 
     let botResponseContent = ""
     let nextConversationStage = conversationStage
@@ -250,6 +237,7 @@ export default function GlazeWidget() {
         break
       case "email":
         const emailInput = input.trim()
+        // ✅ Enhanced email validation
         if (!isValidEmail(emailInput)) {
           setError("Please enter a valid email address (e.g., john@example.com)")
           setIsLoading(false)
@@ -307,6 +295,7 @@ export default function GlazeWidget() {
           for (const line of lines) {
             if (line.startsWith("data:")) {
               const jsonStr = line.substring(5)
+              // ✅ Enhanced streaming chunk handling
               const deltaContent = handleStreamChunk(jsonStr)
               if (deltaContent) {
                 accumulatedContent += deltaContent
@@ -325,20 +314,25 @@ export default function GlazeWidget() {
       }
     }
 
+    // Update conversation stage
     setConversationStage(nextConversationStage)
+
     const botMessage = { role: "assistant", content: botResponseContent, id: Date.now() + Math.random() }
     setMessages((prev) => [...prev, botMessage])
     setIsLoading(false)
     await playTTS(botMessage)
 
-    // Handle submission when complete
+    // After the AI response is generated and the conversation is complete
     if (nextConversationStage === "complete" && Object.keys(currentLeadData).length > 0 && !hasSubmitted) {
+      // ✅ SINGLE submission using Server Action only with double-submit prevention
       startTransition(async () => {
         try {
-          if (hasSubmitted) return
-          setHasSubmitted(true)
-          console.log("🚀 Submitting complete lead data...")
+          if (hasSubmitted) return // Extra safety check
 
+          setHasSubmitted(true) // Prevent double submissions
+          console.log("🚀 Submitting complete lead data using Server Action (SINGLE SUBMISSION)...")
+
+          // Create comprehensive notes
           const comprehensiveNotes = `WEBSITE CHAT LEAD - ${new Date().toLocaleString()}
 
 CUSTOMER INFORMATION:
@@ -376,12 +370,13 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             notes: comprehensiveNotes,
           }
 
-          console.log("📤 Submitting to Pipedrive:", leadInfo.fullName)
+          console.log("📤 Submitting ONCE to Pipedrive:", leadInfo.fullName)
           const result = await submitToPipedrive(leadInfo)
           console.log("📬 Server Action Result:", result)
 
           if (result.success) {
-            console.log("✅ Submission successful!")
+            console.log("✅ SINGLE submission successful!")
+            // Update the bot response to include submission confirmation
             const updatedBotMessage = {
               role: "assistant",
               content:
@@ -392,218 +387,85 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             setMessages((prev) => [...prev.slice(0, -1), updatedBotMessage])
           } else {
             console.error("❌ Server Action failed:", result.error)
-            setHasSubmitted(false)
+            setHasSubmitted(false) // Allow retry on failure
             setError("There was an issue submitting your information. Please try again.")
           }
         } catch (error) {
-          console.error("❌ Failed to submit:", error)
-          setHasSubmitted(false)
+          console.error("❌ Failed to submit via Server Action:", error)
+          setHasSubmitted(false) // Allow retry on failure
           setError("There was an issue submitting your information. Please try again.")
         }
       })
     }
   }
 
-  // Don't render anything until the 5-second delay is complete
-  if (!isVisible) {
-    return null
-  }
-
   return (
-    <>
-      {/* Floating Chat Button */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.div
-            className="fixed bottom-6 right-6 z-50"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          >
+    <div className="p-4 max-w-xl mx-auto text-gray-800">
+      <div className="flex justify-center mb-4">
+        <Image src="/glaze-logo.png" alt="Glaze Glassworks Logo" width={80} height={80} />
+      </div>
+      <Card className="rounded-2xl shadow-lg">
+        <CardContent className="space-y-2 p-4">
+          <div className="text-center font-serif text-xl font-semibold">Contact Glaze Glassworks</div>
+          <div className="text-sm text-center text-gray-500">
+            Your privacy matters to us. All shared info stays secure. 🔒
+          </div>
+
+          <div className="h-72 overflow-y-auto space-y-2 bg-gray-50 rounded-xl p-2">
+            <AnimatePresence>
+              {messages
+                .filter((msg) => msg.role !== "system")
+                .map((msg, i) => (
+                  <motion.div
+                    key={i}
+                    className={`p-2 rounded-xl max-w-xs ${msg.role === "assistant" ? "bg-blue-100 text-left" : "bg-green-100 text-right ml-auto"}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    {msg?.content ?? "Message unavailable."}
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+            {(isLoading || isPending) && <div className="text-gray-400 text-sm">Typing...</div>}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Input
+              placeholder="Ask a question..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              className="font-serif"
+              disabled={isLoading || isListening || isPending}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
+            />
+            {recognitionRef.current && (
+              <Button
+                onClick={toggleSpeechRecognition}
+                disabled={isLoading || isPending}
+                className={`px-4 shadow-lg ${isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"} text-white`}
+                title={isListening ? "Stop speaking" : "Speak your message"}
+              >
+                {isListening ? <StopCircle size={18} /> : <Mic size={18} />}
+              </Button>
+            )}
             <Button
-              onClick={() => setIsOpen(true)}
-              className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl border-4 border-white/20 backdrop-blur-sm"
-              size="lg"
+              onClick={handleSend}
+              className="bg-blue-600 text-white"
+              disabled={isLoading || isListening || isPending}
             >
-              <MessageCircle size={28} className="text-white" />
+              Send
             </Button>
-            {/* Pulsing ring animation */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 animate-ping opacity-20"></div>
-
-            {/* ✅ Attention-grabbing tooltip */}
-            <motion.div
-              className="absolute -top-12 right-0 bg-white text-slate-800 px-3 py-2 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-            >
-              💬 Need help with glass services?
-              <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Chat Widget Popup */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            className="fixed bottom-6 right-6 z-50"
-            initial={{ scale: 0, opacity: 0, y: 100 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 100 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          >
-            <Card
-              className={`shadow-2xl border-0 bg-white/95 backdrop-blur-md ${isMinimized ? "w-80" : "w-96"} ${isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}
-            >
-              <CardContent className="p-0 h-full flex flex-col">
-                {/* Header with Logo */}
-                <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-4 rounded-t-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 flex-shrink-0">
-                      <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
-                    </div>
-                    <div className={`${isMinimized ? "hidden" : "block"}`}>
-                      <h3 className="font-bold text-lg">Glaze Glassworks</h3>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <p className="text-slate-300 text-sm">Chat with Gusto</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!isMinimized && (
-                      <Button
-                        variant="ghost"
-                        onClick={() => setIsMuted((m) => !m)}
-                        title={isMuted ? "Unmute voice" : "Mute voice"}
-                        className="text-white hover:bg-slate-600 p-2"
-                        size="sm"
-                      >
-                        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      onClick={() => setIsMinimized(!isMinimized)}
-                      title={isMinimized ? "Expand chat" : "Minimize chat"}
-                      className="text-white hover:bg-slate-600 p-2"
-                      size="sm"
-                    >
-                      <Minimize2 size={16} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setIsOpen(false)}
-                      title="Close chat"
-                      className="text-white hover:bg-slate-600 p-2"
-                      size="sm"
-                    >
-                      <X size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Chat Content */}
-                {!isMinimized && (
-                  <>
-                    {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white">
-                      <AnimatePresence>
-                        {messages
-                          .filter((msg) => msg.role !== "system")
-                          .map((msg, index) => (
-                            <motion.div
-                              key={index}
-                              className={`mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
-                              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <div
-                                className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm ${
-                                  msg.role === "assistant"
-                                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-                                    : "bg-gradient-to-r from-slate-600 to-slate-700 text-white"
-                                }`}
-                              >
-                                <p className="text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
-                              </div>
-                            </motion.div>
-                          ))}
-                      </AnimatePresence>
-                      {(isLoading || isPending) && (
-                        <div className="flex justify-start">
-                          <div className="max-w-[70%] p-3 rounded-2xl bg-gray-200 text-gray-800">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
-                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
-                              {isPending && <span className="text-xs ml-2">Submitting...</span>}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="p-4 bg-white border-t border-slate-200 rounded-b-lg">
-                      {error && (
-                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-red-600 text-sm">{error}</p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Input
-                          value={input}
-                          onChange={(e) => setInput(e.target.value)}
-                          placeholder="Type your message..."
-                          className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                          disabled={isLoading || isListening || isPending}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault()
-                              handleSend()
-                            }
-                          }}
-                        />
-                        {recognitionRef.current && (
-                          <Button
-                            onClick={toggleSpeechRecognition}
-                            disabled={isLoading || isPending}
-                            className={`px-3 shadow-lg ${
-                              isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
-                            } text-white`}
-                            size="sm"
-                          >
-                            {isListening ? <StopCircle size={16} /> : <Mic size={16} />}
-                          </Button>
-                        )}
-                        <Button
-                          onClick={handleSend}
-                          disabled={isLoading || isListening || isPending}
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 shadow-lg"
-                          size="sm"
-                        >
-                          <Send size={16} />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-2 text-center">
-                        Powered by AI • Your privacy is protected
-                      </p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+          </div>
+          {error && <div className="mt-2 text-red-600 text-sm text-center">{error}</div>}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -612,7 +474,7 @@ const initialMessagesDict = {
     {
       role: "assistant",
       content:
-        "Hi there! 👋 I'm Gusto, your glass guide at Glaze Glassworks! Whether you're looking for shower enclosures, custom mirrors, smart glass, or any glass installation - I'm here to help gather your details and get you connected with our expert team. Ready to get started?",
+        "Hi there, I'm Gusto, your glass guide at Glaze Glassworks! If you're looking for answers, inspiration, or quotes — our services page is the perfect place to start. And if you're ready, I can help gather a few quick details to get things rolling!",
     },
   ],
   es: [
