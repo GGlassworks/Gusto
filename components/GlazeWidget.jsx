@@ -137,26 +137,46 @@ export default function GlazeWidget() {
       const generateAndSetInitialMessages = async () => {
         try {
           console.log("🚀 Starting initial message setup...")
-          const greetingMessage = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+          const greetingMessage = {
+            ...initialMessagesDict[supportedLang][0],
+            id: `greeting-${Date.now()}`, // Use consistent ID to prevent duplicates
+          }
           console.log("📝 Setting greeting message:", greetingMessage.content.substring(0, 50) + "...")
           setMessages([greetingMessage])
-          await playTTS(greetingMessage)
+
+          // Only play TTS once for the greeting
+          if (!spokenMessageIds.current.has(greetingMessage.id)) {
+            await playTTS(greetingMessage)
+          }
+
           console.log("✅ Initial setup complete")
         } catch (error) {
           console.error("Failed to setup initial messages:", error)
-          const initialMsg = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+          const initialMsg = {
+            ...initialMessagesDict[supportedLang][0],
+            id: `greeting-fallback-${Date.now()}`,
+          }
           setMessages([initialMsg])
-          playTTS(initialMsg)
+          if (!spokenMessageIds.current.has(initialMsg.id)) {
+            playTTS(initialMsg)
+          }
         }
       }
-      generateAndSetInitialMessages()
+
+      // Add a small delay to prevent rapid re-initialization
+      const initTimer = setTimeout(generateAndSetInitialMessages, 100)
+      return () => clearTimeout(initTimer)
     }
   }, [isOpen])
 
   const playTTS = async (message) => {
     if (!message || isMuted) return
-    if (spokenMessageIds.current.has(message.id)) {
-      console.log("🛑 Skipping duplicate TTS playback for message ID:", message.id)
+
+    // Use message ID or content hash to prevent duplicates
+    const messageKey = message.id || `msg-${message.content.substring(0, 50)}`
+
+    if (spokenMessageIds.current.has(messageKey)) {
+      console.log("🛑 Skipping duplicate TTS playback for:", messageKey)
       return
     }
 
@@ -179,10 +199,16 @@ export default function GlazeWidget() {
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       audioRef.current = audio
+
+      // Mark as spoken BEFORE playing to prevent race conditions
+      spokenMessageIds.current.add(messageKey)
+
       audio.play()
-      spokenMessageIds.current.add(message.id)
+      console.log("🔊 Playing TTS for:", messageKey)
     } catch (err) {
       console.error("🔊 Playback error:", err)
+      // Remove from spoken set if playback failed
+      spokenMessageIds.current.delete(messageKey)
     }
   }
 
