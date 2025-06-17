@@ -6,3 +6,5 @@ const config = {
 };
 
 export default config;
+
+<div class="bg-white opacity-100 backdrop-filter-none">
