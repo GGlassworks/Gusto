@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX, Send, Mic, StopCircle, MessageCircle, X, Minimize2 } from "lucide-react"
+import { Volume2, VolumeX, Send, Mic, StopCircle, MessageCircle, X, Minimize2, Maximize2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
 import { submitToPipedrive } from "@/app/actions/submitToPipedrive"
@@ -33,17 +33,28 @@ export default function GlazeWidget() {
   const [error, setError] = useState(null)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [hasAutoOpened, setHasAutoOpened] = useState(false)
-  const [hasAppearedOnce, setHasAppearedOnce] = useState(false) // New state for initial button visibility
+  const [hasAppearedOnce, setHasAppearedOnce] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
 
   const audioRef = useRef(null)
   const spokenMessageIds = useRef(new Set())
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
+  const containerRef = useRef(null)
 
-  // ✅ Initial 5-second delay before showing widget, 10-second auto-open
+  // Parallax scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY)
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // ✅ 5-second delay before showing widget, 10-second auto-open
   useEffect(() => {
     const visibilityTimer = setTimeout(() => {
-      setHasAppearedOnce(true) // Set to true after 5 seconds
+      setHasAppearedOnce(true)
       console.log("🎯 Chat widget button now visible after 5-second delay")
     }, 5000)
 
@@ -416,29 +427,57 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
     }
   }
 
+  const handleClose = () => {
+    setIsOpen(false)
+    setIsMinimized(false)
+    // Reset chat state
+    setMessages([])
+    setConversationStage("greeting")
+    setLeadData({})
+    setHasSubmitted(false)
+    setError(null)
+  }
+
+  const handleToggleMinimize = () => {
+    setIsMinimized(!isMinimized)
+  }
+
   return (
     <>
+      {/* Transparent Container with Parallax - Back Layer */}
+      <div
+        ref={containerRef}
+        className="fixed inset-0 pointer-events-none z-40"
+        style={{
+          background: "transparent",
+          transform: `translateY(${scrollY * 0.1}px)`,
+        }}
+      />
+
       {/* Floating Chat Button */}
       <AnimatePresence>
-        {/* Only show the button if the chat is not open AND it has appeared once (after the initial delay) */}
         {!isOpen && hasAppearedOnce && (
           <motion.div
-            className="fixed bottom-6 right-6 z-50"
+            className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 pointer-events-auto"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            style={{
+              transform: `translateY(${scrollY * -0.05}px)`,
+              opacity: 1,
+            }}
           >
             <Button
               onClick={() => {
                 console.log("🎯 Chat button clicked!")
                 setIsOpen(true)
-                setHasAutoOpened(true) // Mark as manually opened
+                setHasAutoOpened(true)
               }}
-              className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl border-4 border-white/20 backdrop-blur-sm"
-              size="lg"
+              className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl border-4 border-white/20 backdrop-blur-sm"
+              style={{ opacity: 1 }}
             >
-              <MessageCircle size={28} className="text-white" />
+              <MessageCircle size={20} className="text-white md:w-6 md:h-6" />
             </Button>
             {/* Pulsing ring animation */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 animate-ping opacity-20"></div>
@@ -450,67 +489,76 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed bottom-6 right-6 z-50"
+            className={`fixed z-50 pointer-events-auto transition-all duration-300 ${
+              isMinimized
+                ? "bottom-4 right-4 w-80 h-16 md:bottom-6 md:right-6"
+                : "bottom-4 right-4 w-[95vw] h-[85vh] md:bottom-6 md:right-6 md:w-96 md:h-[600px]"
+            }`}
             initial={{ scale: 0, opacity: 0, y: 100 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 100 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            style={{
+              transform: `translateY(${scrollY * -0.03}px)`,
+              opacity: 1,
+            }}
           >
-            <Card
-              className={`shadow-2xl border-0 bg-white/95 backdrop-blur-md ${isMinimized ? "w-80" : "w-96"} ${isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}
-            >
-              <CardContent className="p-0 h-full flex flex-col">
+            <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md h-full" style={{ opacity: 1 }}>
+              <CardContent className="p-0 h-full flex flex-col" style={{ opacity: 1 }}>
                 {/* Header with Logo */}
-                <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-4 rounded-t-lg flex items-center justify-between">
+                <div
+                  className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-3 md:p-4 rounded-t-lg flex items-center justify-between"
+                  style={{ opacity: 1 }}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 flex-shrink-0">
-                      <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
+                    <div className="relative w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
+                      <Image src="/favicon.ico" alt="Glaze Glassworks" fill className="object-contain" priority />
                     </div>
                     <div className={`${isMinimized ? "hidden" : "block"}`}>
-                      <h3 className="font-bold text-lg">Glaze Glassworks</h3>
+                      <h3 className="font-bold text-base md:text-lg">Glaze Glassworks</h3>
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <p className="text-slate-300 text-sm">Chat with Gusto</p>
+                        <p className="text-slate-300 text-xs md:text-sm">Chat with Gusto</p>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 md:gap-2">
                     {!isMinimized && (
                       <Button
                         variant="ghost"
                         onClick={() => setIsMuted((m) => !m)}
                         title={isMuted ? "Unmute voice" : "Mute voice"}
-                        className="text-white hover:bg-slate-600 p-2"
-                        size="sm"
+                        className="text-white hover:bg-slate-600 p-1 md:p-2"
+                        style={{ opacity: 1 }}
                       >
-                        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                        {isMuted ? (
+                          <VolumeX size={14} className="md:w-4 md:h-4" />
+                        ) : (
+                          <Volume2 size={14} className="md:w-4 md:h-4" />
+                        )}
                       </Button>
                     )}
                     <Button
                       variant="ghost"
-                      onClick={() => setIsMinimized(!isMinimized)}
+                      onClick={handleToggleMinimize}
                       title={isMinimized ? "Expand chat" : "Minimize chat"}
-                      className="text-white hover:bg-slate-600 p-2"
-                      size="sm"
+                      className="text-white hover:bg-slate-600 p-1 md:p-2"
+                      style={{ opacity: 1 }}
                     >
-                      <Minimize2 size={16} />
+                      {isMinimized ? (
+                        <Maximize2 size={14} className="md:w-4 md:h-4" />
+                      ) : (
+                        <Minimize2 size={14} className="md:w-4 md:h-4" />
+                      )}
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => {
-                        setIsOpen(false)
-                        // Reset chat state when closing
-                        setMessages([])
-                        setConversationStage("greeting")
-                        setLeadData({})
-                        setHasSubmitted(false)
-                        setError(null)
-                      }}
+                      onClick={handleClose}
                       title="Close chat"
-                      className="text-white hover:bg-slate-600 p-2"
-                      size="sm"
+                      className="text-white hover:bg-slate-600 p-1 md:p-2"
+                      style={{ opacity: 1 }}
                     >
-                      <X size={16} />
+                      <X size={14} className="md:w-4 md:h-4" />
                     </Button>
                   </div>
                 </div>
@@ -519,33 +567,42 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                 {!isMinimized && (
                   <>
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white">
+                    <div
+                      className="flex-1 overflow-y-auto p-3 md:p-4 bg-gradient-to-b from-slate-50 to-white"
+                      style={{ opacity: 1 }}
+                    >
                       <AnimatePresence>
                         {messages
                           .filter((msg) => msg.role !== "system")
                           .map((msg, index) => (
                             <motion.div
                               key={index}
-                              className={`mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
+                              className={`mb-3 md:mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
                               initial={{ opacity: 0, y: 20, scale: 0.95 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
                               transition={{ duration: 0.3 }}
                             >
                               <div
-                                className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm ${
+                                className={`max-w-[85%] px-3 md:px-4 py-2 md:py-3 rounded-2xl shadow-sm ${
                                   msg.role === "assistant"
                                     ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
                                     : "bg-gradient-to-r from-slate-600 to-slate-700 text-white"
                                 }`}
+                                style={{ opacity: 1 }}
                               >
-                                <p className="text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
+                                <p className="text-xs md:text-sm leading-relaxed">
+                                  {msg?.content ?? "Message unavailable."}
+                                </p>
                               </div>
                             </motion.div>
                           ))}
                       </AnimatePresence>
                       {(isLoading || isPending) && (
                         <div className="flex justify-start">
-                          <div className="max-w-[70%] p-3 rounded-2xl bg-gray-200 text-gray-800">
+                          <div
+                            className="max-w-[70%] p-2 md:p-3 rounded-2xl bg-gray-200 text-gray-800"
+                            style={{ opacity: 1 }}
+                          >
                             <div className="flex items-center space-x-2">
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
                               <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
@@ -559,10 +616,10 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-4 bg-white border-t border-slate-200 rounded-b-lg">
+                    <div className="p-3 md:p-4 bg-white border-t border-slate-200 rounded-b-lg" style={{ opacity: 1 }}>
                       {error && (
-                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-red-600 text-sm">{error}</p>
+                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg" style={{ opacity: 1 }}>
+                          <p className="text-red-600 text-xs md:text-sm">{error}</p>
                         </div>
                       )}
 
@@ -571,8 +628,9 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
                           placeholder="Type your message..."
-                          className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                          className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-xs md:text-sm"
                           disabled={isLoading || isListening || isPending}
+                          style={{ opacity: 1 }}
                           onKeyPress={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault()
@@ -584,25 +642,30 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                           <Button
                             onClick={toggleSpeechRecognition}
                             disabled={isLoading || isPending}
-                            className={`px-3 shadow-lg ${
+                            className={`px-2 md:px-3 shadow-lg ${
                               isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
                             } text-white`}
-                            size="sm"
+                            style={{ opacity: 1 }}
+                            title={isListening ? "Stop speaking" : "Speak your message"}
                           >
-                            {isListening ? <StopCircle size={16} /> : <Mic size={16} />}
+                            {isListening ? (
+                              <StopCircle size={14} className="md:w-4 md:h-4" />
+                            ) : (
+                              <Mic size={14} className="md:w-4 md:h-4" />
+                            )}
                           </Button>
                         )}
                         <Button
                           onClick={handleSend}
                           disabled={isLoading || isListening || isPending}
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 shadow-lg"
-                          size="sm"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 md:px-4 shadow-lg"
+                          style={{ opacity: 1 }}
                         >
-                          <Send size={16} />
+                          <Send size={14} className="md:w-4 md:h-4" />
                         </Button>
                       </div>
-                      <p className="text-xs text-slate-500 mt-2 text-center">
-                        Powered by AI • Your privacy is protected
+                      <p className="text-xs text-slate-500 mt-2 text-center" style={{ opacity: 1 }}>
+                        Powered by AI • Your privacy is protected {isPending && "• Submitting to Pipedrive..."}
                       </p>
                     </div>
                   </>
