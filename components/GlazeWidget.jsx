@@ -450,14 +450,18 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed bottom-20 right-5 z-50"
+            className="fixed bottom-4 right-4 left-4 sm:bottom-20 sm:right-5 sm:left-auto z-50 flex justify-center sm:justify-end"
             initial={{ scale: 0, opacity: 0, y: 100 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 100 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
           >
             <Card
-              className={`shadow-2xl border-0 bg-white opacity-100 ${isMinimized ? "w-80 h-16" : "w-[90vw] h-[80vh] md:w-[400px] md:h-[500px]"} transition-all duration-300`}
+              className={`shadow-2xl border-0 bg-white opacity-100 transition-all duration-300 ${
+                isMinimized
+                  ? "w-80 h-16"
+                  : "w-[95vw] max-w-md h-auto max-h-[85vh] min-h-[400px] sm:w-[400px] md:w-[450px] lg:w-[500px]"
+              }`}
             >
               <CardContent className="p-0 h-full flex flex-col">
                 {/* Header with Logo */}
@@ -519,7 +523,7 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                 {!isMinimized && (
                   <>
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white">
+                    <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white min-h-[200px] max-h-[50vh]">
                       <AnimatePresence>
                         {messages
                           .filter((msg) => msg.role !== "system")
