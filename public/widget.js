@@ -8,7 +8,7 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      background: rgba(90, 75, 255, 0.8);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
       font-size: 24px;
       z-index: 10000;
@@ -80,12 +80,9 @@
 
   // Optional: auto-open after delay
   window.addEventListener("load", () => {
-    if (!sessionStorage.getItem("gustoAutoOpened")) {
-      setTimeout(() => {
-        widget.style.display = "block"
-        toggleBtn.innerText = "✖️"
-        sessionStorage.setItem("gustoAutoOpened", "true")
-      }, 10000)
-    }
+    setTimeout(() => {
+      widget.style.display = "block"
+      toggleBtn.innerText = "✖️"
+    }, 10000)
   })
 })()
