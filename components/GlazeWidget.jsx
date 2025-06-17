@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX, Send, Mic, StopCircle, MessageCircle, X, Maximize2 } from "lucide-react"
+import { Volume2, VolumeX, Send, Mic, StopCircle, MessageCircle, X, Minimize2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
 import { submitToPipedrive } from "@/app/actions/submitToPipedrive"
 import Image from "next/image"
@@ -32,7 +33,7 @@ export default function GlazeWidget() {
   const [error, setError] = useState(null)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [hasAutoOpened, setHasAutoOpened] = useState(false)
-  const [hasAppearedOnce, setHasAppearedOnce] = useState(false)
+  const [hasAppearedOnce, setHasAppearedOnce] = useState(false) // New state for initial button visibility
 
   const audioRef = useRef(null)
   const spokenMessageIds = useRef(new Set())
@@ -42,7 +43,7 @@ export default function GlazeWidget() {
   // ✅ Initial 5-second delay before showing widget, 10-second auto-open
   useEffect(() => {
     const visibilityTimer = setTimeout(() => {
-      setHasAppearedOnce(true)
+      setHasAppearedOnce(true) // Set to true after 5 seconds
       console.log("🎯 Chat widget button now visible after 5-second delay")
     }, 5000)
 
@@ -419,6 +420,7 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
     <>
       {/* Floating Chat Button */}
       <AnimatePresence>
+        {/* Only show the button if the chat is not open AND it has appeared once (after the initial delay) */}
         {!isOpen && hasAppearedOnce && (
           <motion.div
             className="fixed bottom-6 right-6 z-50"
@@ -431,19 +433,20 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
               onClick={() => {
                 console.log("🎯 Chat button clicked!")
                 setIsOpen(true)
-                setHasAutoOpened(true)
+                setHasAutoOpened(true) // Mark as manually opened
               }}
               className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl border-4 border-white/20 backdrop-blur-sm"
               size="lg"
             >
               <MessageCircle size={28} className="text-white" />
             </Button>
+            {/* Pulsing ring animation */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 animate-ping opacity-20"></div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Chat Widget Popup - Matching the provided design */}
+      {/* Chat Widget Popup */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -453,146 +456,159 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             exit={{ scale: 0, opacity: 0, y: 100 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
           >
-            <div className="w-96 bg-white rounded-2xl shadow-2xl overflow-hidden">
-              {/* Header - Dark blue/gray matching the design */}
-              <div className="bg-slate-700 text-white px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-8 h-8 flex-shrink-0">
-                    <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-base">Glaze Glassworks</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <p className="text-slate-300 text-xs">Chat with Gusto</p>
+            <Card
+              className={`shadow-2xl border-0 bg-white/95 backdrop-blur-md ${isMinimized ? "w-80" : "w-96"} ${isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}
+            >
+              <CardContent className="p-0 h-full flex flex-col">
+                {/* Header with Logo */}
+                <div className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-4 rounded-t-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-10 h-10 flex-shrink-0">
+                      <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setIsMuted((m) => !m)}
-                    title={isMuted ? "Unmute voice" : "Mute voice"}
-                    className="text-white hover:bg-slate-600 p-2 h-8 w-8"
-                    size="sm"
-                  >
-                    {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setIsMinimized(!isMinimized)}
-                    title="Expand chat"
-                    className="text-white hover:bg-slate-600 p-2 h-8 w-8"
-                    size="sm"
-                  >
-                    <Maximize2 size={14} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setIsOpen(false)
-                      setMessages([])
-                      setConversationStage("greeting")
-                      setLeadData({})
-                      setHasSubmitted(false)
-                      setError(null)
-                    }}
-                    title="Close chat"
-                    className="text-white hover:bg-slate-600 p-2 h-8 w-8"
-                    size="sm"
-                  >
-                    <X size={14} />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Messages Area - Light gray background */}
-              <div className="h-96 overflow-y-auto p-4 bg-gray-50">
-                <AnimatePresence>
-                  {messages
-                    .filter((msg) => msg.role !== "system")
-                    .map((msg, index) => (
-                      <motion.div
-                        key={index}
-                        className={`mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <div
-                          className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                            msg.role === "assistant"
-                              ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
-                              : "bg-white text-gray-800 border border-gray-200"
-                          }`}
-                        >
-                          <p className="text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                </AnimatePresence>
-                {(isLoading || isPending) && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[70%] p-3 rounded-2xl bg-white border border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></div>
-                        {isPending && <span className="text-xs ml-2 text-gray-500">Submitting...</span>}
+                    <div className={`${isMinimized ? "hidden" : "block"}`}>
+                      <h3 className="font-bold text-lg">Glaze Glassworks</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <p className="text-slate-300 text-sm">Chat with Gusto</p>
                       </div>
                     </div>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input Area - White background */}
-              <div className="p-4 bg-white border-t border-gray-200">
-                {error && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-600 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <div className="flex gap-2 items-center">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm rounded-lg"
-                    disabled={isLoading || isListening || isPending}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSend()
-                      }
-                    }}
-                  />
-                  {recognitionRef.current && (
+                  <div className="flex items-center gap-2">
+                    {!isMinimized && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setIsMuted((m) => !m)}
+                        title={isMuted ? "Unmute voice" : "Mute voice"}
+                        className="text-white hover:bg-slate-600 p-2"
+                        size="sm"
+                      >
+                        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                      </Button>
+                    )}
                     <Button
-                      onClick={toggleSpeechRecognition}
-                      disabled={isLoading || isPending}
-                      className={`p-2 h-10 w-10 rounded-lg ${
-                        isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
-                      } text-white`}
+                      variant="ghost"
+                      onClick={() => setIsMinimized(!isMinimized)}
+                      title={isMinimized ? "Expand chat" : "Minimize chat"}
+                      className="text-white hover:bg-slate-600 p-2"
                       size="sm"
                     >
-                      {isListening ? <StopCircle size={16} /> : <Mic size={16} />}
+                      <Minimize2 size={16} />
                     </Button>
-                  )}
-                  <Button
-                    onClick={handleSend}
-                    disabled={isLoading || isListening || isPending}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-2 h-10 w-10 rounded-lg"
-                    size="sm"
-                  >
-                    <Send size={16} />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setIsOpen(false)
+                        // Reset chat state when closing
+                        setMessages([])
+                        setConversationStage("greeting")
+                        setLeadData({})
+                        setHasSubmitted(false)
+                        setError(null)
+                      }}
+                      title="Close chat"
+                      className="text-white hover:bg-slate-600 p-2"
+                      size="sm"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
                 </div>
 
-                <p className="text-xs text-gray-500 mt-3 text-center">Powered by AI • Your privacy is protected</p>
-              </div>
-            </div>
+                {/* Chat Content */}
+                {!isMinimized && (
+                  <>
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-slate-50 to-white">
+                      <AnimatePresence>
+                        {messages
+                          .filter((msg) => msg.role !== "system")
+                          .map((msg, index) => (
+                            <motion.div
+                              key={index}
+                              className={`mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
+                              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <div
+                                className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm ${
+                                  msg.role === "assistant"
+                                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                                    : "bg-gradient-to-r from-slate-600 to-slate-700 text-white"
+                                }`}
+                              >
+                                <p className="text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
+                              </div>
+                            </motion.div>
+                          ))}
+                      </AnimatePresence>
+                      {(isLoading || isPending) && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[70%] p-3 rounded-2xl bg-gray-200 text-gray-800">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
+                              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+                              {isPending && <span className="text-xs ml-2">Submitting...</span>}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-4 bg-white border-t border-slate-200 rounded-b-lg">
+                      {error && (
+                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-600 text-sm">{error}</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <Input
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          placeholder="Type your message..."
+                          className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
+                          disabled={isLoading || isListening || isPending}
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault()
+                              handleSend()
+                            }
+                          }}
+                        />
+                        {recognitionRef.current && (
+                          <Button
+                            onClick={toggleSpeechRecognition}
+                            disabled={isLoading || isPending}
+                            className={`px-3 shadow-lg ${
+                              isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
+                            } text-white`}
+                            size="sm"
+                          >
+                            {isListening ? <StopCircle size={16} /> : <Mic size={16} />}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={handleSend}
+                          disabled={isLoading || isListening || isPending}
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 shadow-lg"
+                          size="sm"
+                        >
+                          <Send size={16} />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2 text-center">
+                        Powered by AI • Your privacy is protected
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>
