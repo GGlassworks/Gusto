@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useTransition } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Volume2, VolumeX, Send, Mic, StopCircle } from "lucide-react"
+import { Volume2, VolumeX, Send, Mic, StopCircle } from "lucide-react" // Removed MessageCircle, X, Minimize2, Maximize2
 import { Card, CardContent } from "@/components/ui/card"
 import { motion, AnimatePresence } from "framer-motion"
 import { submitToPipedrive } from "@/app/actions/submitToPipedrive"
+import Image from "next/image"
 
 function processTextForSpeech(text) {
   return text
@@ -18,6 +19,7 @@ function processTextForSpeech(text) {
 }
 
 export default function GlazeChat() {
+  // Removed isOpen, isMinimized, hasAutoOpened, hasAppearedOnce, scrollY states
   const [language, setLanguage] = useState("en")
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState("")
@@ -28,19 +30,24 @@ export default function GlazeChat() {
   const [isListening, setIsListening] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState(null)
-  const [hasSubmitted, setHasSubmitted] = useState(false) // prevent double-submits
+  const [hasSubmitted, setHasSubmitted] = useState(false)
 
   const audioRef = useRef(null)
   const spokenMessageIds = useRef(new Set())
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
+  // Removed containerRef
 
-  // ✅ Enhanced email validation function
+  // Removed Parallax scroll effect useEffect
+
+  // Removed 5-second delay and 10-second auto-open useEffect
+
+  // Enhanced email validation function
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
-  // ✅ Enhanced streaming chunk handler
+  // Enhanced streaming chunk handler
   const handleStreamChunk = (data) => {
-    if (data === "[DONE]") return // Fix for JSON chunk parse error
+    if (data === "[DONE]") return
     try {
       const json = JSON.parse(data)
       const deltaContent = json.choices[0]?.delta?.content
@@ -101,31 +108,31 @@ export default function GlazeChat() {
     }
   }, [language, input])
 
-  // Initial setup for language
+  // Initialize chat when component mounts (always "open" as it's in an iframe)
   useEffect(() => {
-    const userLang = navigator.language.split("-")[0]
-    const supportedLang = initialMessagesDict[userLang] ? userLang : "en"
-    setLanguage(supportedLang)
+    if (messages.length === 0) {
+      const userLang = navigator.language.split("-")[0]
+      const supportedLang = initialMessagesDict[userLang] ? userLang : "en"
+      setLanguage(supportedLang)
 
-    const generateAndSetInitialMessages = async () => {
-      try {
-        console.log("🚀 Starting initial message setup...")
-
-        const greetingMessage = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
-        console.log("📝 Setting greeting message:", greetingMessage.content.substring(0, 50) + "...")
-        setMessages([greetingMessage])
-        await playTTS(greetingMessage)
-
-        console.log("✅ Initial setup complete - CRM will handle S.O# assignment")
-      } catch (error) {
-        console.error("Failed to setup initial messages:", error)
-        const initialMsg = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
-        setMessages([initialMsg])
-        playTTS(initialMsg)
+      const generateAndSetInitialMessages = async () => {
+        try {
+          console.log("🚀 Starting initial message setup...")
+          const greetingMessage = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+          console.log("📝 Setting greeting message:", greetingMessage.content.substring(0, 50) + "...")
+          setMessages([greetingMessage])
+          await playTTS(greetingMessage)
+          console.log("✅ Initial setup complete")
+        } catch (error) {
+          console.error("Failed to setup initial messages:", error)
+          const initialMsg = { ...initialMessagesDict[supportedLang][0], id: Date.now() + Math.random() }
+          setMessages([initialMsg])
+          playTTS(initialMsg)
+        }
       }
+      generateAndSetInitialMessages()
     }
-    generateAndSetInitialMessages()
-  }, [])
+  }, []) // Removed isOpen from dependency array
 
   const playTTS = async (message) => {
     if (!message || isMuted) return
@@ -179,7 +186,7 @@ export default function GlazeChat() {
     setMessages(newMessages)
     setInput("")
     setIsLoading(true)
-    setError(null) // Clear any previous errors
+    setError(null)
 
     let botResponseContent = ""
     let nextConversationStage = conversationStage
@@ -236,7 +243,6 @@ export default function GlazeChat() {
         break
       case "email":
         const emailInput = input.trim()
-        // ✅ Enhanced email validation
         if (!isValidEmail(emailInput)) {
           setError("Please enter a valid email address (e.g., john@example.com)")
           setIsLoading(false)
@@ -294,7 +300,6 @@ export default function GlazeChat() {
           for (const line of lines) {
             if (line.startsWith("data:")) {
               const jsonStr = line.substring(5)
-              // ✅ Enhanced streaming chunk handling
               const deltaContent = handleStreamChunk(jsonStr)
               if (deltaContent) {
                 accumulatedContent += deltaContent
@@ -313,25 +318,20 @@ export default function GlazeChat() {
       }
     }
 
-    // Update conversation stage
     setConversationStage(nextConversationStage)
-
     const botMessage = { role: "assistant", content: botResponseContent, id: Date.now() + Math.random() }
     setMessages((prev) => [...prev, botMessage])
     setIsLoading(false)
     await playTTS(botMessage)
 
-    // After the AI response is generated and the conversation is complete
+    // Handle submission when complete
     if (nextConversationStage === "complete" && Object.keys(currentLeadData).length > 0 && !hasSubmitted) {
-      // ✅ SINGLE submission using Server Action only with double-submit prevention
       startTransition(async () => {
         try {
-          if (hasSubmitted) return // Extra safety check
+          if (hasSubmitted) return
+          setHasSubmitted(true)
+          console.log("🚀 Submitting complete lead data...")
 
-          setHasSubmitted(true) // Prevent double submissions
-          console.log("🚀 Submitting complete lead data using Server Action (SINGLE SUBMISSION)...")
-
-          // Create comprehensive notes
           const comprehensiveNotes = `WEBSITE CHAT LEAD - ${new Date().toLocaleString()}
 
 CUSTOMER INFORMATION:
@@ -369,13 +369,12 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             notes: comprehensiveNotes,
           }
 
-          console.log("📤 Submitting ONCE to Pipedrive:", leadInfo.fullName)
+          console.log("📤 Submitting to Pipedrive:", leadInfo.fullName)
           const result = await submitToPipedrive(leadInfo)
           console.log("📬 Server Action Result:", result)
 
           if (result.success) {
-            console.log("✅ SINGLE submission successful!")
-            // Update the bot response to include submission confirmation
+            console.log("✅ Submission successful!")
             const updatedBotMessage = {
               role: "assistant",
               content:
@@ -386,152 +385,162 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             setMessages((prev) => [...prev.slice(0, -1), updatedBotMessage])
           } else {
             console.error("❌ Server Action failed:", result.error)
-            setHasSubmitted(false) // Allow retry on failure
+            setHasSubmitted(false)
             setError("There was an issue submitting your information. Please try again.")
           }
         } catch (error) {
-          console.error("❌ Failed to submit via Server Action:", error)
-          setHasSubmitted(false) // Allow retry on failure
+          console.error("❌ Failed to submit:", error)
+          setHasSubmitted(false)
           setError("There was an issue submitting your information. Please try again.")
         }
       })
     }
   }
 
+  // Removed handleClose and handleToggleMinimize functions
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
-      <div className="max-w-2xl mx-auto">
-        <motion.div
-          className="text-center mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">AI Chat Assistant</h1>
-          <p className="text-slate-600">Get instant help with your questions</p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-0">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white p-6 rounded-t-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Chat with AI</h3>
-                      <p className="text-slate-300 text-sm">Your privacy is protected</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setIsMuted((m) => !m)}
-                      title={isMuted ? "Unmute voice" : "Mute voice"}
-                      className="text-white hover:bg-blue-700"
-                    >
-                      {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="h-96 overflow-y-auto p-6 bg-gradient-to-b from-slate-50 to-white">
-                <AnimatePresence>
-                  {messages
-                    .filter((msg) => msg.role !== "system")
-                    .map((msg, index) => (
-                      <motion.div
-                        key={index}
-                        className={`mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${msg.role === "assistant" ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white" : "bg-gradient-to-r from-slate-600 to-slate-700 text-white"}`}
-                        >
-                          <p className="text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                </AnimatePresence>
-                {(isLoading || isPending) && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[70%] p-3 rounded-lg bg-gray-200 text-gray-800">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
-                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
-                        {isPending && <span className="text-xs ml-2">Submitting to Pipedrive...</span>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="p-6 bg-white border-t border-slate-200">
-                {/* ✅ Enhanced error display */}
-                {error && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-600 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type or speak your message..."
-                    className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-base"
-                    disabled={isLoading || isListening || isPending}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSend()
-                      }
-                    }}
-                  />
-                  {recognitionRef.current && (
-                    <Button
-                      onClick={toggleSpeechRecognition}
-                      disabled={isLoading || isPending}
-                      className={`px-4 shadow-lg ${isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"} text-white`}
-                      title={isListening ? "Stop speaking" : "Speak your message"}
-                    >
-                      {isListening ? <StopCircle size={18} /> : <Mic size={18} />}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handleSend}
-                    disabled={isLoading || isListening || isPending}
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 shadow-lg"
-                  >
-                    <Send size={18} />
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-500 mt-2 text-center">
-                  Powered by AI {isPending && "• Submitting to Pipedrive..."}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          className="text-center mt-8 text-sm text-slate-600"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <p>© {new Date().getFullYear()} AI Chat. All rights reserved.</p>
-        </motion.div>
+    // Simplified root div for iframe content
+    <div className="h-full w-full flex flex-col p-4 text-gray-800">
+      <div className="flex justify-center mb-4">
+        <Image src="/glaze-logo.png" alt="Glaze Glassworks Logo" width={80} height={80} />
       </div>
+      <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-md h-full flex flex-col">
+        <CardContent className="p-0 h-full flex flex-col">
+          {/* Header with Logo and Mute/Unmute */}
+          <div
+            className="bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white p-3 md:p-4 rounded-t-lg flex items-center justify-between"
+            style={{ opacity: 1 }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
+                <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
+              </div>
+              <div>
+                <h3 className="font-bold text-base md:text-lg">Glaze Glassworks</h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <p className="text-slate-300 text-xs md:text-sm">Chat with Gusto</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 md:gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setIsMuted((m) => !m)}
+                title={isMuted ? "Unmute voice" : "Mute voice"}
+                className="text-white hover:bg-slate-600 p-1 md:p-2"
+                style={{ opacity: 1 }}
+              >
+                {isMuted ? (
+                  <VolumeX size={14} className="md:w-4 md:h-4" />
+                ) : (
+                  <Volume2 size={14} className="md:w-4 md:h-4" />
+                )}
+              </Button>
+              {/* Removed Minimize and Close buttons */}
+            </div>
+          </div>
+
+          {/* Messages Area */}
+          <div
+            className="flex-1 overflow-y-auto p-3 md:p-4 bg-gradient-to-b from-slate-50 to-white"
+            style={{ opacity: 1 }}
+          >
+            <AnimatePresence>
+              {messages
+                .filter((msg) => msg.role !== "system")
+                .map((msg, index) => (
+                  <motion.div
+                    key={index}
+                    className={`mb-3 md:mb-4 flex ${msg.role === "assistant" ? "justify-start" : "justify-end"}`}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div
+                      className={`max-w-[85%] px-3 md:px-4 py-2 md:py-3 rounded-2xl shadow-sm ${
+                        msg.role === "assistant"
+                          ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white"
+                          : "bg-gradient-to-r from-slate-600 to-slate-700 text-white"
+                      }`}
+                      style={{ opacity: 1 }}
+                    >
+                      <p className="text-xs md:text-sm leading-relaxed">{msg?.content ?? "Message unavailable."}</p>
+                    </div>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+            {(isLoading || isPending) && (
+              <div className="flex justify-start">
+                <div className="max-w-[70%] p-2 md:p-3 rounded-2xl bg-gray-200 text-gray-800" style={{ opacity: 1 }}>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-75"></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-150"></div>
+                    {isPending && <span className="text-xs ml-2">Submitting...</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div className="p-3 md:p-4 bg-white border-t border-slate-200 rounded-b-lg" style={{ opacity: 1 }}>
+            {error && (
+              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg" style={{ opacity: 1 }}>
+                <p className="text-red-600 text-xs md:text-sm">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                className="flex-1 border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-xs md:text-sm"
+                disabled={isLoading || isListening || isPending}
+                style={{ opacity: 1 }}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+              />
+              {recognitionRef.current && (
+                <Button
+                  onClick={toggleSpeechRecognition}
+                  disabled={isLoading || isPending}
+                  className={`px-2 md:px-3 shadow-lg ${
+                    isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
+                  } text-white`}
+                  style={{ opacity: 1 }}
+                  title={isListening ? "Stop speaking" : "Speak your message"}
+                >
+                  {isListening ? (
+                    <StopCircle size={14} className="md:w-4 md:h-4" />
+                  ) : (
+                    <Mic size={14} className="md:w-4 md:h-4" />
+                  )}
+                </Button>
+              )}
+              <Button
+                onClick={handleSend}
+                disabled={isLoading || isListening || isPending}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 md:px-4 shadow-lg"
+                style={{ opacity: 1 }}
+              >
+                <Send size={14} className="md:w-4 md:h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 text-center" style={{ opacity: 1 }}>
+              Powered by AI • Your privacy is protected {isPending && "• Submitting to Pipedrive..."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

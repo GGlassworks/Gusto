@@ -1,12 +1,12 @@
 "use client"
 
-import GlazeWidget from "@/components/GlazeWidget"
+import GlazeChat from "@/components/GlazeChat"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Clean, minimal page with just the chat widget */}
-      <GlazeWidget />
+      {/* The GlazeChat component will now be rendered directly as the content of the iframe */}
+      <GlazeChat />
     </div>
   )
 }
