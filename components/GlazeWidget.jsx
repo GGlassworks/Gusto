@@ -19,7 +19,6 @@ function processTextForSpeech(text) {
 }
 
 export default function GlazeWidget() {
-  const [isVisible, setIsVisible] = useState(false) // Controls 5-second delay
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [language, setLanguage] = useState("en")
@@ -33,21 +32,34 @@ export default function GlazeWidget() {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState(null)
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [hasAutoOpened, setHasAutoOpened] = useState(false)
+  const [hasAppearedOnce, setHasAppearedOnce] = useState(false) // New state for initial button visibility
 
   const audioRef = useRef(null)
   const spokenMessageIds = useRef(new Set())
   const messagesEndRef = useRef(null)
   const recognitionRef = useRef(null)
 
-  // ✅ 5-second delay before showing widget
+  // ✅ Initial 5-second delay before showing widget, 10-second auto-open
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-      console.log("🎯 Chat widget now visible after 5-second delay")
+    const visibilityTimer = setTimeout(() => {
+      setHasAppearedOnce(true) // Set to true after 5 seconds
+      console.log("🎯 Chat widget button now visible after 5-second delay")
     }, 5000)
 
-    return () => clearTimeout(timer)
-  }, [])
+    const autoOpenTimer = setTimeout(() => {
+      if (!isOpen && !hasAutoOpened) {
+        setIsOpen(true)
+        setHasAutoOpened(true)
+        console.log("🤖 Auto-opening chat after 10 seconds")
+      }
+    }, 10000)
+
+    return () => {
+      clearTimeout(visibilityTimer)
+      clearTimeout(autoOpenTimer)
+    }
+  }, [isOpen, hasAutoOpened])
 
   // ✅ Enhanced email validation function
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -404,16 +416,12 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
     }
   }
 
-  // Don't render anything until the 5-second delay is complete
-  if (!isVisible) {
-    return null
-  }
-
   return (
     <>
       {/* Floating Chat Button */}
       <AnimatePresence>
-        {!isOpen && (
+        {/* Only show the button if the chat is not open AND it has appeared once (after the initial delay) */}
+        {!isOpen && hasAppearedOnce && (
           <motion.div
             className="fixed bottom-6 right-6 z-50"
             initial={{ scale: 0, opacity: 0 }}
@@ -422,7 +430,11 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
           >
             <Button
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                console.log("🎯 Chat button clicked!")
+                setIsOpen(true)
+                setHasAutoOpened(true) // Mark as manually opened
+              }}
               className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-2xl border-4 border-white/20 backdrop-blur-sm"
               size="lg"
             >
@@ -430,17 +442,6 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
             </Button>
             {/* Pulsing ring animation */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 animate-ping opacity-20"></div>
-
-            {/* ✅ Attention-grabbing tooltip */}
-            <motion.div
-              className="absolute -top-12 right-0 bg-white text-slate-800 px-3 py-2 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-            >
-              💬 Need help with glass services?
-              <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white"></div>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -496,7 +497,15 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {
+                        setIsOpen(false)
+                        // Reset chat state when closing
+                        setMessages([])
+                        setConversationStage("greeting")
+                        setLeadData({})
+                        setHasSubmitted(false)
+                        setError(null)
+                      }}
                       title="Close chat"
                       className="text-white hover:bg-slate-600 p-2"
                       size="sm"
@@ -612,7 +621,7 @@ const initialMessagesDict = {
     {
       role: "assistant",
       content:
-        "Hi there! 👋 I'm Gusto, your glass guide at Glaze Glassworks! Whether you're looking for shower enclosures, custom mirrors, smart glass, or any glass installation - I'm here to help gather your details and get you connected with our expert team. Ready to get started?",
+        "Hi there, I'm Gusto, your glass guide at Glaze Glassworks! If you're looking for answers, inspiration, or quotes — our services page is the perfect place to start. And if you're ready, I can help gather a few quick details to get things rolling!",
     },
   ],
   es: [
