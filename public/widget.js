@@ -5,20 +5,25 @@
       position: fixed;
       bottom: 24px;
       right: 24px;
-      width: 52px;
-      height: 52px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      font-size: 24px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.2);
       z-index: 10000;
-      border: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      backdrop-filter: blur(8px);
-      cursor: pointer;
+      padding: 0;
+    }
+    #gusto-toggle img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border-radius: 4px;
     }
 
     #gusto-widget {
@@ -57,7 +62,7 @@
 
   const toggleBtn = document.createElement("button")
   toggleBtn.id = "gusto-toggle"
-  toggleBtn.innerText = "💬"
+  toggleBtn.innerHTML = `<img src="https://gustogg.vercel.app/Favicon-192x192.jpg" alt="Gusto" style="width: 28px; height: 28px;" />`
   document.body.appendChild(toggleBtn)
 
   const widget = document.createElement("div")
@@ -75,7 +80,9 @@
   toggleBtn.addEventListener("click", () => {
     const open = widget.style.display === "block"
     widget.style.display = open ? "none" : "block"
-    toggleBtn.innerText = open ? "💬" : "✖️"
+    toggleBtn.innerHTML = open
+      ? `<img src="https://gustogg.vercel.app/Favicon-192x192.jpg" alt="Gusto" style="width: 28px; height: 28px;" />`
+      : "✖️"
   })
 
   // Optional: auto-open after delay
