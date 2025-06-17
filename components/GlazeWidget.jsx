@@ -450,14 +450,14 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed bottom-6 right-6 z-50"
+            className="fixed bottom-20 right-5 z-50"
             initial={{ scale: 0, opacity: 0, y: 100 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 100 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
           >
             <Card
-              className={`shadow-2xl border-0 bg-white/95 backdrop-blur-md ${isMinimized ? "w-80" : "w-96"} ${isMinimized ? "h-16" : "h-[600px]"} transition-all duration-300`}
+              className={`shadow-2xl border-0 bg-white opacity-100 ${isMinimized ? "w-80 h-16" : "w-[90vw] h-[80vh] md:w-[400px] md:h-[500px]"} transition-all duration-300`}
             >
               <CardContent className="p-0 h-full flex flex-col">
                 {/* Header with Logo */}
