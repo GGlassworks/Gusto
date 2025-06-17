@@ -512,7 +512,7 @@ CRITICAL INFORMATION FOR FOLLOW-UP:
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative w-8 h-8 md:w-10 md:h-10 flex-shrink-0">
-                      <Image src="/favicon.ico" alt="Glaze Glassworks" fill className="object-contain" priority />
+                      <Image src="/glaze-logo.png" alt="Glaze Glassworks" fill className="object-contain" priority />
                     </div>
                     <div className={`${isMinimized ? "hidden" : "block"}`}>
                       <h3 className="font-bold text-base md:text-lg">Glaze Glassworks</h3>
