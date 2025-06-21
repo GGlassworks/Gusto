@@ -3,21 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gusto Chatbot</title>
+  <title>Gusto Chatbot + Drive KB</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="chatbox">
-    <h2>Contact Us</h2>
-    <form id="leadForm">
-      <input type="text" name="fullName" placeholder="Full Name" required /><br/>
-      <input type="email" name="email" placeholder="Email" required /><br/>
-      <input type="tel" name="phone" placeholder="Phone" required /><br/>
-      <input type="text" name="address" placeholder="Address" /><br/>
-      <textarea name="notes" placeholder="Project Notes"></textarea><br/>
-      <button type="submit">Submit</button>
-    </form>
-    <div id="response"></div>
+    <textarea id="message" placeholder="Ask me something..."></textarea><br/>
+    <button id="ask">Ask</button>
+    <div id="reply"></div>
   </div>
   <script src="script.js"></script>
 </body>

@@ -1,18 +1,10 @@
-document.getElementById("leadForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const data = {
-    fullName: form.fullName.value,
-    email: form.email.value,
-    phone: form.phone.value,
-    address: form.address.value,
-    notes: form.notes.value
-  };
-  const res = await fetch("/api/pipedrive", {
+document.getElementById("ask").addEventListener("click", async () => {
+  const input = document.getElementById("message").value;
+  const res = await fetch("/api/knowledge", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ message: input })
   });
-  const result = await res.json();
-  document.getElementById("response").innerText = result.success ? "Submitted!" : "Error submitting form.";
+  const data = await res.json();
+  document.getElementById("reply").innerText = data.reply;
 });
