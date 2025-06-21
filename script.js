@@ -1,10 +1,18 @@
-const chatbox = document.getElementById('chatbox');
-fetch('/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: 'Hello!' })
-})
-.then(res => res.json())
-.then(data => {
-  chatbox.innerHTML = "<p><strong>Bot:</strong> " + data.reply + "</p>";
+document.getElementById("leadForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    fullName: form.fullName.value,
+    email: form.email.value,
+    phone: form.phone.value,
+    address: form.address.value,
+    notes: form.notes.value
+  };
+  const res = await fetch("/api/pipedrive", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  const result = await res.json();
+  document.getElementById("response").innerText = result.success ? "Submitted!" : "Error submitting form.";
 });

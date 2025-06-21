@@ -7,7 +7,18 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="chatbox">Loading chatbot...</div>
+  <div id="chatbox">
+    <h2>Contact Us</h2>
+    <form id="leadForm">
+      <input type="text" name="fullName" placeholder="Full Name" required /><br/>
+      <input type="email" name="email" placeholder="Email" required /><br/>
+      <input type="tel" name="phone" placeholder="Phone" required /><br/>
+      <input type="text" name="address" placeholder="Address" /><br/>
+      <textarea name="notes" placeholder="Project Notes"></textarea><br/>
+      <button type="submit">Submit</button>
+    </form>
+    <div id="response"></div>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>

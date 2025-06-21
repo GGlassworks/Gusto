@@ -1,19 +1,19 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import { readFileSync } from 'fs';
-import { handleChat } from './api/chat.js';
+import { handlePipedriveLead } from './api/pipedrive.js';
 
 const server = createServer(async (req, res) => {
   const { pathname } = parse(req.url, true);
 
-  if (pathname === '/api/chat' && req.method === 'POST') {
+  if (pathname === '/api/pipedrive' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
-      const { message } = JSON.parse(body);
-      const reply = await handleChat(message);
+      const data = JSON.parse(body);
+      const result = await handlePipedriveLead(data);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ reply }));
+      res.end(JSON.stringify(result));
     });
   } else if (pathname === '/' || pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html' });
